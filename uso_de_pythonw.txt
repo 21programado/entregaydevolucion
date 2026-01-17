@@ -1,6 +1,6 @@
 Uso de pythonw para crear un acceso directo sin consola (similar a .exe)
 
-1º comando : where pythonw
+1º) Ejecutar en cmd comando : where pythonw
 Esto da una ruta (ej. C:\Program Files\Python314\pythonw.exe)
 
 2º en el archivo.py -> Propiedades -> Seguridad -> copio la ruta de Nombre de objeto (ej. C:\Users\Programador\Documents\PROGRAMAS\Economato Python\control_equipos.py)
