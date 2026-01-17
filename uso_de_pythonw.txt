@@ -1,0 +1,10 @@
+Uso de pythonw para crear un acceso directo sin consola (similar a .exe)
+
+1º comando : where pythonw
+Esto da una ruta (ej. C:\Program Files\Python314\pythonw.exe)
+
+2º en el archivo.py -> Propiedades -> Seguridad -> copio la ruta de Nombre de objeto (ej. C:\Users\Programador\Documents\PROGRAMAS\Economato Python\control_equipos.py)
+
+3º en Escritorio -> Nuevo -> Acceso Directo -> en "Escriba la ubicación del elemento" pongo:  "C:\Program Files\Python314\pythonw.exe" "C:\Users\Programador\Documents\PROGRAMAS\Economato Python\control_equipos.py" ((*es decir las dos rutas entre comillas y con un espacio entre ellas)) -> Siguiente -> en "Escriba un nombre para el acceso directo" le doy un nombre -> Finalizar.
+
+Con esto queda un acceso directo en el Escritorio. La aplicación se ejecuta con doble clic.
