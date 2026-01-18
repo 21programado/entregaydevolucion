@@ -11,6 +11,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "registros.db")
 
 # ===============================
+# CONFIGURACIÓN
+# ===============================
+REGISTROS_POR_PAGINA = 20
+REGISTROS_PDF = 100
+
+# ===============================
 # BASE DE DATOS
 # ===============================
 conn = sqlite3.connect(DB_PATH)
@@ -31,15 +37,22 @@ CREATE TABLE IF NOT EXISTS registros (
 conn.commit()
 
 # ===============================
-# CONFIGURACIÓN
+# ESTADO
 # ===============================
-REGISTROS_PDF = 50
+pagina_actual = 0
+filtro_equipo = ""
 
 # ===============================
 # FUNCIONES
 # ===============================
 def ahora():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def limpiar_formulario():
+    nombre_entry.delete(0, "end")
+    cargo_combo.set("")
+    equipo_combo.set("")
+    salida_text.delete("1.0", "end")
 
 def registrar_entrega():
     nombre = nombre_entry.get().strip()
@@ -66,11 +79,10 @@ def registrar_entrega():
 def registrar_devolucion():
     seleccion = tree.selection()
     if not seleccion:
-        messagebox.showwarning("Selección", "Seleccione un registro pendiente.")
+        messagebox.showwarning("Selección", "Seleccione un registro.")
         return
 
-    item = seleccion[0]
-    valores = tree.item(item, "values")
+    valores = tree.item(seleccion[0], "values")
 
     if valores[6] != "Pendiente":
         messagebox.showinfo("Información", "Este equipo ya fue devuelto.")
@@ -90,32 +102,79 @@ def registrar_devolucion():
     conn.commit()
     cargar_registros()
 
+# ===============================
+# CARGA DE REGISTROS (PAGINADA)
+# ===============================
 def cargar_registros():
+    global pagina_actual
+
     for i in tree.get_children():
         tree.delete(i)
 
-    cursor.execute("""
-        SELECT registro, nombre, cargo, equipo, entrega, salida, devolucion
-        FROM registros
-        ORDER BY id DESC
-        LIMIT 200
-    """)
+    offset = pagina_actual * REGISTROS_POR_PAGINA
 
-    for row in cursor.fetchall():
+    if filtro_equipo:
+        cursor.execute("""
+            SELECT COUNT(*) FROM registros WHERE equipo = ?
+        """, (filtro_equipo,))
+        total = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT registro, nombre, cargo, equipo, entrega, salida, devolucion
+            FROM registros
+            WHERE equipo = ?
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+        """, (filtro_equipo, REGISTROS_POR_PAGINA, offset))
+    else:
+        cursor.execute("SELECT COUNT(*) FROM registros")
+        total = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT registro, nombre, cargo, equipo, entrega, salida, devolucion
+            FROM registros
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+        """, (REGISTROS_POR_PAGINA, offset))
+
+    filas = cursor.fetchall()
+
+    for row in filas:
         tag = "pendiente" if row[6] == "Pendiente" else "devuelto"
         tree.insert("", "end", values=row, tags=(tag,))
 
-def limpiar_formulario():
-    nombre_entry.delete(0, "end")
-    cargo_combo.set("")
-    equipo_combo.set("")
-    salida_text.delete("1.0", "end")
+    total_paginas = max(1, (total + REGISTROS_POR_PAGINA - 1) // REGISTROS_POR_PAGINA)
+    lbl_pagina.config(text=f"Página {pagina_actual + 1} de {total_paginas}")
 
-def cargar_salida_al_seleccionar(event):
-    seleccion = tree.selection()
-    if seleccion:
-        salida_text.delete("1.0", "end")
-        salida_text.insert("1.0", tree.item(seleccion[0], "values")[5])
+    btn_anterior.config(state="normal" if pagina_actual > 0 else "disabled")
+    btn_siguiente.config(state="normal" if pagina_actual < total_paginas - 1 else "disabled")
+
+def pagina_anterior():
+    global pagina_actual
+    if pagina_actual > 0:
+        pagina_actual -= 1
+        cargar_registros()
+
+def pagina_siguiente():
+    global pagina_actual
+    pagina_actual += 1
+    cargar_registros()
+
+# ===============================
+# BÚSQUEDA POR EQUIPO
+# ===============================
+def buscar_por_equipo():
+    global filtro_equipo, pagina_actual
+    filtro_equipo = equipo_busqueda.get().strip()
+    pagina_actual = 0
+    cargar_registros()
+
+def limpiar_busqueda():
+    global filtro_equipo, pagina_actual
+    filtro_equipo = ""
+    equipo_busqueda.delete(0, "end")
+    pagina_actual = 0
+    cargar_registros()
 
 # ===============================
 # PDF MINIMALISTA
@@ -128,7 +187,6 @@ def exportar_pdf():
         messagebox.showerror(
             "PDF no disponible",
             "No está instalada la librería 'reportlab'.\n\n"
-            "Para habilitar el PDF:\n"
             "pip install reportlab"
         )
         return
@@ -146,14 +204,13 @@ def exportar_pdf():
         messagebox.showinfo("PDF", "No hay registros para exportar.")
         return
 
-    pdf_path = os.path.join(BASE_DIR, "ultimos_50_registros.pdf")
+    pdf_path = os.path.join(BASE_DIR, f"ultimos_{REGISTROS_PDF}_registros.pdf")
     c = canvas.Canvas(pdf_path, pagesize=A4)
     width, height = A4
 
     y = height - 40
     c.setFont("Helvetica", 9)
-
-    c.drawString(40, y, "Últimos 50 registros - Control de Equipos")
+    c.drawString(40, y, f"Últimos {REGISTROS_PDF} registros - Control de Equipos")
     y -= 30
 
     for fila in filas:
@@ -172,7 +229,7 @@ def exportar_pdf():
 # INTERFAZ
 # ===============================
 root = tk.Tk()
-root.title("Control de Entrega y Devolución de Equipos y Materiales")
+root.title("Control de Entrega y Devolución de Equipos")
 root.state("zoomed")
 
 main = ttk.Frame(root, padding=15)
@@ -184,58 +241,61 @@ ttk.Label(
     font=("Segoe UI", 16, "bold")
 ).pack(pady=10)
 
+# -------------------------------
+# FORMULARIO
+# -------------------------------
 form = ttk.Frame(main)
 form.pack(fill="x", pady=10)
 
-ttk.Label(form, text="Nombre").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+ttk.Label(form, text="Nombre").grid(row=0, column=0, padx=5, pady=5)
 nombre_entry = ttk.Entry(form, width=30)
 nombre_entry.grid(row=0, column=1, padx=5, pady=5)
 
-ttk.Label(form, text="Cargo").grid(row=0, column=2, sticky="w", padx=5, pady=5)
+ttk.Label(form, text="Cargo").grid(row=0, column=2, padx=5, pady=5)
 cargo_combo = ttk.Combobox(
-    form,
-    width=28,
-    state="readonly",
-    values=[
-        "Auxiliar de Enfermería",
-        "Licenciada en Enfermería",
-        "Practicante Interno",
-        "Médico",
-        "ASG",
-        "Otro"
-    ]
+    form, width=28, state="readonly",
+    values=["Auxiliar de Enfermería", "Licenciada en Enfermería",
+            "Practicante Interno", "Médico", "ASG", "Otro"]
 )
 cargo_combo.grid(row=0, column=3, padx=5, pady=5)
 
-ttk.Label(form, text="Equipo").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+ttk.Label(form, text="Equipo").grid(row=1, column=0, padx=5, pady=5)
 equipo_combo = ttk.Combobox(
-    form,
-    width=28,
-    state="readonly",
-    values=[
-        "Monitor 1",
-        "Monitor 2",
-        "ECG",
-        "Saturómetro",
-        "Otoscopio",
-        "Valija de Traslado",
-        "Videolaringo",
-        "Otro"
-    ]
+    form, width=28, state="readonly",
+    values=["Monitor 1", "Monitor 2", "ECG", "Saturómetro",
+            "Otoscopio", "Valija de Traslado", "Videolaringo", "Otro"]
 )
 equipo_combo.grid(row=1, column=1, padx=5, pady=5)
 
-ttk.Label(form, text="Salida / Destino").grid(row=1, column=2, sticky="nw", padx=(20, 5), pady=5)
+ttk.Label(form, text="Salida / Destino").grid(row=1, column=2, padx=(20, 5), pady=5)
 salida_text = tk.Text(form, width=30, height=3)
 salida_text.grid(row=1, column=3, padx=5, pady=5)
 
+# -------------------------------
+# BOTONES PRINCIPALES
+# -------------------------------
 botones = ttk.Frame(main)
 botones.pack(pady=10)
 
 ttk.Button(botones, text="Registrar Entrega", command=registrar_entrega).pack(side="left", padx=5)
 ttk.Button(botones, text="Registrar Devolución", command=registrar_devolucion).pack(side="left", padx=5)
-ttk.Button(botones, text="Exportar últimos 50 a PDF", command=exportar_pdf).pack(side="left", padx=5)
+ttk.Button(botones, text="Exportar PDF", command=exportar_pdf).pack(side="left", padx=5)
 
+# -------------------------------
+# BÚSQUEDA
+# -------------------------------
+busqueda = ttk.Frame(main)
+busqueda.pack(fill="x", pady=5)
+
+ttk.Label(busqueda, text="Buscar por equipo:").pack(side="left", padx=5)
+equipo_busqueda = ttk.Entry(busqueda, width=25)
+equipo_busqueda.pack(side="left", padx=5)
+ttk.Button(busqueda, text="Buscar", command=buscar_por_equipo).pack(side="left", padx=5)
+ttk.Button(busqueda, text="Limpiar", command=limpiar_busqueda).pack(side="left", padx=5)
+
+# -------------------------------
+# TABLA
+# -------------------------------
 tabla_frame = ttk.Frame(main)
 tabla_frame.pack(fill="both", expand=True)
 
@@ -255,7 +315,23 @@ tree.configure(yscrollcommand=scroll.set)
 tree.tag_configure("pendiente", background="#ffe5e5")
 tree.tag_configure("devuelto", background="#e5ffe5")
 
-tree.bind("<<TreeviewSelect>>", cargar_salida_al_seleccionar)
+# -------------------------------
+# PAGINACIÓN
+# -------------------------------
+paginacion = ttk.Frame(main)
+paginacion.pack(pady=5)
 
+btn_anterior = ttk.Button(paginacion, text="⟵ Anterior", command=pagina_anterior)
+btn_anterior.pack(side="left", padx=5)
+
+lbl_pagina = ttk.Label(paginacion, text="Página 1 de 1")
+lbl_pagina.pack(side="left", padx=10)
+
+btn_siguiente = ttk.Button(paginacion, text="Siguiente ⟶", command=pagina_siguiente)
+btn_siguiente.pack(side="left", padx=5)
+
+# ===============================
+# INICIO
+# ===============================
 cargar_registros()
 root.mainloop()
