@@ -1,0 +1,9 @@
+pip --version
+Si pip no está instalado instalar con: python -m ensurepip --upgrade
+
+luego:
+pip install reportlab
+
+
+
+
