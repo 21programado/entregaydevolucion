@@ -1,6 +1,6 @@
 @echo off
 
-REM ===Atencion, guardar como recrear_acceso_directo.bar===
+REM ===Atencion, guardar como recrear_acceso_directo.bat===
 REM === CONFIGURACIÓN ===
 set PYTHONW=C:\Program Files\Python314\pythonw.exe
 set SCRIPT=C:\ruta\a\tu\carpeta\equipos.py
@@ -19,3 +19,4 @@ $Shortcut.Save()"
 
 echo Acceso directo creado correctamente.
 pause
+
