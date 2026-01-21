@@ -1,0 +1,21 @@
+@echo off
+
+REM ===Atencion, guardar como recrear_acceso_directo.bar===
+REM === CONFIGURACIÓN ===
+set PYTHONW=C:\Program Files\Python314\pythonw.exe
+set SCRIPT=C:\ruta\a\tu\carpeta\equipos.py
+set NOMBRE=Control de Equipos
+set DESKTOP=%USERPROFILE%\Desktop
+
+REM === CREAR ACCESO DIRECTO ===
+powershell -NoProfile -Command ^
+"$WshShell = New-Object -ComObject WScript.Shell; ^
+$Shortcut = $WshShell.CreateShortcut('%DESKTOP%\%NOMBRE%.lnk'); ^
+$Shortcut.TargetPath = '%PYTHONW%'; ^
+$Shortcut.Arguments = '\"%SCRIPT%\"'; ^
+$Shortcut.WorkingDirectory = (Split-Path '%SCRIPT%'); ^
+$Shortcut.IconLocation = '%PYTHONW%'; ^
+$Shortcut.Save()"
+
+echo Acceso directo creado correctamente.
+pause
