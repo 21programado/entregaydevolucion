@@ -337,7 +337,7 @@ scroll = ttk.Scrollbar(tabla_frame, orient="vertical", command=tree.yview)
 scroll.pack(side="right", fill="y")
 tree.configure(yscrollcommand=scroll.set)
 
-tree.tag_configure("pendiente", background="#ffe5e5")
+tree.tag_configure("pendiente", background="#F57E67")
 tree.tag_configure("devuelto", background="#e5ffe5")
 
 # -------------------------------
@@ -360,3 +360,4 @@ btn_siguiente.pack(side="left", padx=5)
 # ===============================
 cargar_registros()
 root.mainloop()
+
