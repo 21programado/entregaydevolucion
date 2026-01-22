@@ -4,7 +4,7 @@ REM === Atención: cambiar la extensión del archivo a .bat ===
 REM === CONFIGURACIÓN ===
 set "PYTHONW=C:\Program Files\Python314\pythonw.exe"
 set "SCRIPT=C:\Users\Programador\Documents\PROGRAMAS\Economato Python\equipos v1\equipos_v1.py"
-set "NOMBRE=Equipos y Materiales"
+set "NOMBRE=ECONOMATO"
 
 REM === CREAR ACCESO DIRECTO ===
 powershell -NoProfile -Command ^
@@ -19,3 +19,4 @@ $sc.Save()"
 
 echo Acceso directo creado correctamente.
 pause
+
